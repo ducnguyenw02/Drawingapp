@@ -1,0 +1,122 @@
+✅ MÔ TẢ CHI TIẾT LỖI BẰNG TIẾNG VIỆT
+
+Rule	Tên Lỗi	Mô tả lỗi chi tiết (để dùng làm prompt)
+
+Rule 1	Vai lệch khi setup	Ở tư thế chuẩn bị đánh (setup), vai trái và vai phải nên nằm gần ngang nhau. Nếu lệch quá nhiều, cú đánh dễ bị sai hướng (slice hoặc hook).
+Rule 2 (đã bỏ)	❌	❌
+Rule 3	Đầu di chuyển nhiều	Trong suốt cú swing, vị trí đầu nên được giữ ổn định. Nếu đầu di chuyển nhiều (trước/ra sau/trái/phải), dễ gây mất trục và đánh trượt bóng.
+Rule 4	Cột sống không giữ ổn định	Cột sống nên nghiêng về phía trước một góc ổn định từ tư thế setup cho đến backswing. Nếu góc thay đổi lớn, người chơi dễ mất cân bằng và kiểm soát gậy kém.
+Rule 5	Trọng tâm không chuyển đúng cách	Trọng tâm của người chơi nên chuyển nhẹ sang phải khi backswing và sang trái khi downswing. Nếu không chuyển đúng, cú đánh sẽ thiếu lực và dễ đánh trượt.
+
+
+
+---
+
+✅ PROMPT GỢI Ý CHO CHATGPT (DÙNG TRONG APP ĐỂ ĐỀ XUẤT BÀI TẬP)
+
+Ví dụ: nếu app phát hiện lỗi "Đầu di chuyển nhiều", gửi prompt:
+
+> Tôi đang tập đánh golf. Trong quá trình đánh, tôi bị lỗi:
+“Trong suốt cú swing, vị trí đầu nên được giữ ổn định. Nếu đầu di chuyển nhiều (trước/ra sau/trái/phải), dễ gây mất trục và đánh trượt bóng.”
+Bạn hãy đề xuất giúp tôi các bài tập bổ trợ cụ thể để cải thiện vấn đề này, kèm mô tả ngắn gọn cách thực hiện.
+
+
+
+
+---
+
+✅ CHỈNH LẠI CODE – TẠO prompt TỰ ĐỘNG KHI RULE LỖI
+
+fun generatePrompt(errorMessage: String): String {
+    return """
+        Tôi đang tập đánh golf. Trong quá trình đánh, tôi bị lỗi:
+        “$errorMessage”
+        Bạn hãy đề xuất giúp tôi các bài tập bổ trợ cụ thể để cải thiện vấn đề này, kèm mô tả ngắn gọn cách thực hiện.
+    """.trimIndent()
+}
+
+
+---
+
+✅ GỌI API CHATGPT (VỚI TOKEN) ĐỂ GỬI PROMPT & NHẬN GỢI Ý
+
+Bạn cần sử dụng thư viện HTTP (như Ktor hoặc Retrofit). Ví dụ dùng Ktor:
+
+➤ Bước 1: Thêm thư viện ktor trong build.gradle
+
+implementation("io.ktor:ktor-client-core:2.3.0")
+implementation("io.ktor:ktor-client-cio:2.3.0")
+implementation("io.ktor:ktor-client-content-negotiation:2.3.0")
+implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.0")
+
+
+---
+
+➤ Bước 2: Tạo hàm gọi API ChatGPT
+
+suspend fun getExerciseSuggestion(errorPrompt: String, apiKey: String): String {
+    val client = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json()
+        }
+    }
+
+    val requestBody = mapOf(
+        "model" to "gpt-3.5-turbo",
+        "messages" to listOf(
+            mapOf("role" to "user", "content" to errorPrompt)
+        )
+    )
+
+    val response = client.post("https://api.openai.com/v1/chat/completions") {
+        headers {
+            append("Authorization", "Bearer $apiKey")
+            append("Content-Type", "application/json")
+        }
+        setBody(requestBody)
+    }
+
+    val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+    val content = json["choices"]?.jsonArray?.get(0)?.jsonObject
+        ?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content ?: "Không có phản hồi"
+
+    client.close()
+    return content
+}
+
+
+---
+
+✅ TÍCH HỢP VÀO ỨNG DỤNG
+
+Bạn có thể gọi hàm như sau:
+
+val apiKey = "sk-..." // Token từ OpenAI
+val error = "Đầu di chuyển nhiều trong cú đánh, gây mất trục và giảm độ chính xác."
+val prompt = generatePrompt(error)
+
+lifecycleScope.launch {
+    val suggestion = getExerciseSuggestion(prompt, apiKey)
+    // Hiển thị ra giao diện người dùng
+    textView.text = suggestion
+}
+
+
+---
+
+✅ TỔNG KẾT
+
+Bạn đã có 4 rule kiểm tra tư thế trong swing.
+
+Mỗi rule lỗi sẽ được chuyển thành mô tả tự nhiên tiếng Việt để làm prompt.
+
+Ứng dụng gửi prompt đó tới ChatGPT và nhận về bài tập cải thiện động tác.
+
+Gợi ý bài tập sẽ được trình bày rõ cho người chơi golf.
+
+
+
+---
+
+Bạn muốn mình xuất toàn bộ code thành 1 file Kotlin (GolfAnalyzer.kt) và gợi ý thiết kế giao diện app luôn không?
+
