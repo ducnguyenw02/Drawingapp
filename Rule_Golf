@@ -1,0 +1,75 @@
+fun checkShoulderAlignment(frame: List<LandmarkPoint>): Boolean {
+    val leftShoulder = frame.first { it.type == "LEFT_SHOULDER" }
+    val rightShoulder = frame.first { it.type == "RIGHT_SHOULDER" }
+    val deltaY = leftShoulder.y - rightShoulder.y
+    return deltaY in -20f..20f
+}
+fun calculateRotationAngle(p1: LandmarkPoint, p2: LandmarkPoint): Float {
+    return Math.toDegrees(atan2((p2.y - p1.y).toDouble(), (p2.x - p1.x).toDouble())).toFloat()
+}
+
+fun checkBackswingRotation(frame: List<LandmarkPoint>): Pair<Boolean, Float> {
+    val lShoulder = frame.first { it.type == "LEFT_SHOULDER" }
+    val rShoulder = frame.first { it.type == "RIGHT_SHOULDER" }
+    val lHip = frame.first { it.type == "LEFT_HIP" }
+    val rHip = frame.first { it.type == "RIGHT_HIP" }
+
+    val shoulderAngle = calculateRotationAngle(lShoulder, rShoulder)
+    val hipAngle = calculateRotationAngle(lHip, rHip)
+    val xFactor = abs(shoulderAngle - hipAngle)
+    return Pair(xFactor > 30f, xFactor)
+}
+fun checkHeadMovement(allLandmarks: List<List<LandmarkPoint>>): Boolean {
+    val headStart = allLandmarks[0].first { it.type == "NOSE" } // hoặc "HEAD", tuỳ model
+    val headImpact = allLandmarks[550].first { it.type == "NOSE" }
+    val distance = hypot(headStart.x - headImpact.x, headStart.y - headImpact.y)
+    return distance < 30f
+}
+fun calculateSpineAngle(frame: List<LandmarkPoint>): Float {
+    val lShoulder = frame.first { it.type == "LEFT_SHOULDER" }
+    val rShoulder = frame.first { it.type == "RIGHT_SHOULDER" }
+    val lHip = frame.first { it.type == "LEFT_HIP" }
+    val rHip = frame.first { it.type == "RIGHT_HIP" }
+
+    val shoulderMid = PointF((lShoulder.x + rShoulder.x) / 2f, (lShoulder.y + rShoulder.y) / 2f)
+    val hipMid = PointF((lHip.x + rHip.x) / 2f, (lHip.y + rHip.y) / 2f)
+
+    return Math.toDegrees(atan2((shoulderMid.y - hipMid.y).toDouble(), (shoulderMid.x - hipMid.x).toDouble())).toFloat()
+}
+
+fun checkSpineStability(allLandmarks: List<List<LandmarkPoint>>): Boolean {
+    val spineStart = calculateSpineAngle(allLandmarks[0])
+    val spineBackswing = calculateSpineAngle(allLandmarks[400])
+    return abs(spineStart - spineBackswing) < 10f
+}
+fun getHipCenterX(frame: List<LandmarkPoint>): Float {
+    val lHip = frame.first { it.type == "LEFT_HIP" }
+    val rHip = frame.first { it.type == "RIGHT_HIP" }
+    return (lHip.x + rHip.x) / 2f
+}
+
+fun checkWeightShift(allLandmarks: List<List<LandmarkPoint>>): Boolean {
+    val centerSetup = getHipCenterX(allLandmarks[0])
+    val centerBackswing = getHipCenterX(allLandmarks[400])
+    val centerImpact = getHipCenterX(allLandmarks[550])
+
+    val moveRight = centerBackswing > centerSetup + 10
+    val moveLeft = centerImpact < centerBackswing - 10
+    return moveRight && moveLeft
+}
+fun analyzeGolfSwing(allLandmarks: List<List<LandmarkPoint>>) {
+    val setupFrame = allLandmarks[0]
+    val backswingFrame = allLandmarks[400]
+
+    val isShoulderAligned = checkShoulderAlignment(setupFrame)
+    val (xFactorOk, xFactorValue) = checkBackswingRotation(backswingFrame)
+    val isHeadStable = checkHeadMovement(allLandmarks)
+    val isSpineStable = checkSpineStability(allLandmarks)
+    val isWeightShiftGood = checkWeightShift(allLandmarks)
+
+    println("Lệch vai setup: $isShoulderAligned")
+    println("X-Factor tốt: $xFactorOk (giá trị: ${xFactorValue.roundToInt()}°)")
+    println("Đầu giữ ổn định: $isHeadStable")
+    println("Góc cột sống ổn định: $isSpineStable")
+    println("Chuyển trọng tâm đúng: $isWeightShiftGood")
+}
